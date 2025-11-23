@@ -7,12 +7,12 @@ import {
   StringToObjectSchema,
 } from '@/common';
 
-const QuizAnswerSchema = z.object({
+export const QuizAnswerSchema = z.object({
   answer_text: z.string().max(512).trim(),
   is_correct: z.boolean(),
 });
 
-const QuizQuestionSchema = z.object({
+export const QuizQuestionSchema = z.object({
   question_text: z.string().max(2000).trim(),
   question_image_array_index: z.coerce.number().min(0).max(20).optional(), // multipart form tidak dapat menerima tipe file dalam object, field ini digunakan untuk memetakan file pada field files_to_upload
   answers: z.array(QuizAnswerSchema).min(1).max(10),

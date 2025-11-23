@@ -9,7 +9,14 @@ import {
 } from '@/common';
 
 import { QuizService } from './quiz.service';
-import { CreateQuizSchema, type ICreateQuiz } from './schema';
+import {
+  CheckAnswerSchema,
+  CreateQuizSchema,
+  type ICheckAnswer,
+  type ICreateQuiz,
+  type IUpdateQuiz,
+  UpdateQuizSchema,
+} from './schema';
 
 export const QuizController = Router()
   .post(
@@ -67,6 +74,68 @@ export const QuizController = Router()
         return response.status(result.statusCode).json(result.json());
       } catch (error) {
         return next(error);
+      }
+    },
+  )
+  .patch(
+    '/:game_id',
+    validateAuth({}),
+    validateBody({
+      schema: UpdateQuizSchema,
+      file_fields: [
+        { name: 'thumbnail_image', maxCount: 1 },
+        { name: 'files_to_upload', maxCount: 20 },
+      ],
+    }),
+    async (
+      request: AuthedRequest<{ game_id: string }, {}, IUpdateQuiz>,
+      response: Response,
+      next: NextFunction,
+    ) => {
+      try {
+        const updatedGame = await QuizService.updateQuiz(
+          request.body,
+          request.params.game_id,
+          request.user!.user_id,
+          request.user!.role,
+        );
+        const result = new SuccessResponse(
+          StatusCodes.OK,
+          'Quiz updated',
+          updatedGame,
+        );
+
+        return response.status(result.statusCode).json(result.json());
+      } catch (error) {
+        next(error);
+      }
+    },
+  )
+  .post(
+    '/:game_id/check',
+    validateAuth({}),
+    validateBody({ schema: CheckAnswerSchema }),
+    async (
+      request: AuthedRequest<{ game_id: string }, {}, ICheckAnswer>,
+      response: Response,
+      next: NextFunction,
+    ) => {
+      try {
+        const result = await QuizService.checkAnswer(
+          request.body,
+          request.params.game_id,
+        );
+        const successResponse = new SuccessResponse(
+          StatusCodes.OK,
+          'Answer checked successfully',
+          result,
+        );
+
+        return response
+          .status(successResponse.statusCode)
+          .json(successResponse.json());
+      } catch (error) {
+        next(error);
       }
     },
   );

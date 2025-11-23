@@ -38,3 +38,5 @@ prisma/seeder/data/users-prod.data.csv
 .DS_Store
 
 /generated/prisma
+
+uploads
