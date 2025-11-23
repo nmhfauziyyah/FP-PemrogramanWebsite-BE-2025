@@ -11,6 +11,15 @@ import {
   type IUpdateQuiz,
 } from './schema';
 
+function shuffleArray<T>(array: T[]): T[] {
+  for (let index = array.length - 1; index > 0; index--) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [array[index], array[randomIndex]] = [array[randomIndex], array[index]];
+  }
+
+  return array;
+}
+
 export abstract class QuizService {
   static async createQuiz(data: ICreateQuiz, user_id: string) {
     await this.existGameCheck(data.name);
@@ -99,9 +108,15 @@ export abstract class QuizService {
   ) {
     const game = await prisma.games.findUnique({
       where: { id: game_id },
-      omit: {
-        updated_at: true,
-        game_template_id: true,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        thumbnail_image: true,
+        is_published: true,
+        created_at: true,
+        game_json: true,
+        creator_id: true,
       },
     });
 
@@ -127,9 +142,14 @@ export abstract class QuizService {
   ) {
     const game = await prisma.games.findUnique({
       where: { id: game_id },
-      omit: {
-        updated_at: true,
-        game_template_id: true,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        thumbnail_image: true,
+        is_published: true,
+        game_json: true,
+        creator_id: true,
       },
     });
 
@@ -270,9 +290,9 @@ export abstract class QuizService {
   static async checkAnswer(data: ICheckAnswer, game_id: string) {
     const game = await prisma.games.findUnique({
       where: { id: game_id },
-      omit: {
-        updated_at: true,
-        game_template_id: true,
+      select: {
+        id: true,
+        game_json: true,
       },
     });
 
@@ -353,9 +373,122 @@ export abstract class QuizService {
     };
   }
 
-  private static async existGameCheck(game_name?: string, game_id?: string) {
+  static async getQuizPublicPlay(game_id: string) {
     const game = await prisma.games.findUnique({
-      where: { name: game_name, id: game_id },
+      where: { id: game_id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        thumbnail_image: true,
+        is_published: true,
+        game_json: true,
+      },
+    });
+
+    if (!game) throw new ErrorResponse(StatusCodes.NOT_FOUND, 'Game not found');
+
+    if (!game.is_published)
+      throw new ErrorResponse(StatusCodes.NOT_FOUND, 'Game not found');
+
+    const quizJson = game.game_json as unknown as IQuizJson | null;
+
+    if (!quizJson)
+      throw new ErrorResponse(StatusCodes.NOT_FOUND, 'Quiz data not found');
+
+    const questionsWithIndex = (quizJson.questions ?? []).map(
+      (q, question_index) => ({
+        question_index,
+        question_text: q.question_text,
+        question_image: q.question_image ?? null,
+        answers: (q.answers ?? []).map((a, answer_index) => ({
+          answer_index,
+          answer_text: a.answer_text,
+          is_correct: typeof a.is_correct === 'boolean' ? a.is_correct : false,
+        })),
+      }),
+    );
+
+    if (quizJson.is_question_randomized && questionsWithIndex.length > 0) {
+      shuffleArray(questionsWithIndex);
+    }
+
+    const cleanedQuestions = questionsWithIndex.map(question => {
+      const answers = question.answers.map(ans => ({
+        answer_text: ans.answer_text,
+        answer_index: ans.answer_index,
+      }));
+
+      if (quizJson.is_answer_randomized) shuffleArray(answers);
+
+      return {
+        question_text: question.question_text,
+        question_image: question.question_image ?? null,
+        question_index: question.question_index,
+        answers,
+      };
+    });
+
+    return {
+      id: game.id,
+      name: game.name,
+      description: game.description,
+      thumbnail_image: game.thumbnail_image,
+      score_per_question: quizJson.score_per_question,
+      questions: cleanedQuestions,
+      is_published: game.is_published,
+    };
+  }
+
+  static async deleteQuiz(game_id: string, user_id: string, user_role: ROLE) {
+    const game = await prisma.games.findUnique({
+      where: { id: game_id },
+      select: {
+        id: true,
+        thumbnail_image: true,
+        game_json: true,
+        creator_id: true,
+      },
+    });
+
+    if (!game) throw new ErrorResponse(StatusCodes.NOT_FOUND, 'Game not found');
+
+    if (user_role !== 'SUPER_ADMIN' && game.creator_id !== user_id)
+      throw new ErrorResponse(
+        StatusCodes.FORBIDDEN,
+        'User cannot delete this game',
+      );
+
+    const oldQuizJson = game.game_json as IQuizJson | null;
+    const oldImagePaths: string[] = [];
+
+    if (oldQuizJson?.questions) {
+      for (const question of oldQuizJson.questions) {
+        if (question.question_image)
+          oldImagePaths.push(question.question_image);
+      }
+    }
+
+    if (game.thumbnail_image) oldImagePaths.push(game.thumbnail_image);
+
+    for (const path of oldImagePaths) {
+      await FileManager.remove(path);
+    }
+
+    await prisma.games.delete({ where: { id: game_id } });
+
+    return { id: game_id };
+  }
+
+  private static async existGameCheck(game_name?: string, game_id?: string) {
+    const where: Record<string, unknown> = {};
+    if (game_name) where.name = game_name;
+    if (game_id) where.id = game_id;
+
+    if (Object.keys(where).length === 0) return null;
+
+    const game = await prisma.games.findFirst({
+      where,
       select: { id: true, creator_id: true },
     });
 

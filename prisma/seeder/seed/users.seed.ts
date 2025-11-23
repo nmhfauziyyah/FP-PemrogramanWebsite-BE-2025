@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { PrismaClient, type ROLE } from '@prisma/client';
+// eslint-disable-next-line unicorn/prefer-node-protocol
 import { file, password, resolveSync } from 'bun';
 import csv from 'csvtojson';
 

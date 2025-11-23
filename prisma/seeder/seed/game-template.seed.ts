@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+// eslint-disable-next-line unicorn/prefer-node-protocol
 import { resolveSync } from 'bun';
 import csv from 'csvtojson';
 

@@ -1,3 +1,4 @@
+// eslint-disable-next-line unicorn/prefer-node-protocol
 import { password } from 'bun';
 import { StatusCodes } from 'http-status-codes';
 

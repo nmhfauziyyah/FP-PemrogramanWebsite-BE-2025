@@ -1,4 +1,9 @@
-import { type NextFunction, type Response, Router } from 'express';
+import {
+  type NextFunction,
+  type Request,
+  type Response,
+  Router,
+} from 'express';
 import { StatusCodes } from 'http-status-codes';
 
 import {
@@ -77,6 +82,29 @@ export const QuizController = Router()
       }
     },
   )
+  .get(
+    '/:game_id/play/public',
+    async (
+      request: Request<{ game_id: string }>,
+      response: Response,
+      next: NextFunction,
+    ) => {
+      try {
+        const game = await QuizService.getQuizPublicPlay(
+          request.params.game_id,
+        );
+        const result = new SuccessResponse(
+          StatusCodes.OK,
+          'Get public game successfully',
+          game,
+        );
+
+        return response.status(result.statusCode).json(result.json());
+      } catch (error) {
+        return next(error);
+      }
+    },
+  )
   .patch(
     '/:game_id',
     validateAuth({}),
@@ -136,6 +164,35 @@ export const QuizController = Router()
           .json(successResponse.json());
       } catch (error) {
         next(error);
+      }
+    },
+  )
+  .delete(
+    '/:game_id',
+    validateAuth({}),
+    async (
+      request: AuthedRequest<{ game_id: string }>,
+      response: Response,
+      next: NextFunction,
+    ) => {
+      try {
+        const result = await QuizService.deleteQuiz(
+          request.params.game_id,
+          request.user!.user_id,
+          request.user!.role,
+        );
+
+        const successResponse = new SuccessResponse(
+          StatusCodes.OK,
+          'Quiz deleted successfully',
+          result,
+        );
+
+        return response
+          .status(successResponse.statusCode)
+          .json(successResponse.json());
+      } catch (error) {
+        return next(error);
       }
     },
   );
