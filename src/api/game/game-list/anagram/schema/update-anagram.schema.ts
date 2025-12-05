@@ -33,7 +33,7 @@ export const UpdateAnagramSchema = z.object({
 
   // files_to_upload opsional, hanya dikirim jika ada gambar baru/diubah
   files_to_upload: fileArraySchema({
-    max_size: 2 * 1024 * 1024,
+    max_size: 10 * 1024 * 1024,
     min_amount: 1,
     max_amount: 20,
   }).optional(),
