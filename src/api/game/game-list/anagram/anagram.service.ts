@@ -197,6 +197,7 @@ export abstract class AnagramService {
         shuffled_letters: shuffledLetters, //array huruf acak
         //menambahkan informasi batas hint (panjang kata)
         hint_limit: q.correct_word.length < 5 ? 1 : 2,
+        correct_word: q.correct_word,
       };
     });
 
