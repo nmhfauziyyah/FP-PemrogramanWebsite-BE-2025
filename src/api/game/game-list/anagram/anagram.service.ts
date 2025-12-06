@@ -95,7 +95,6 @@ export abstract class AnagramService {
 
     //4. membuat objek IAnagramJson
     const anagramJson: IAnagramJson = {
-      score_per_question: data.score_per_question,
       is_question_randomized: data.is_question_randomized,
       questions: data.questions.map(
         (question: ICreateAnagram['questions'][number]) => ({
@@ -207,7 +206,6 @@ export abstract class AnagramService {
       description: game.description,
       thumbnail_image: game.thumbnail_image,
       is_published: game.is_published,
-      score_per_question: anagramJson.score_per_question,
       questions: cleanedQuestions,
     };
   }
@@ -239,7 +237,7 @@ export abstract class AnagramService {
       (accumulator, q) => accumulator + q.correct_word.length,
       0,
     );
-    const maxScore = totalLetters * anagramJson.score_per_question * 2;
+    const maxScore = totalLetters * 2;
 
     for (const answer of data.answers) {
       const correctWord = correctWordMap.get(answer.question_id);
@@ -266,7 +264,7 @@ export abstract class AnagramService {
       //logic scoring anagram
       if (isPerfect) {
         //point x2/huruf
-        questionScore = letterCount * anagramJson.score_per_question * 2;
+        questionScore = letterCount * 2;
       } else if (guessedWord.length > 0) {
         //jawaban dikirim, tapi tidak sempurna (salah atau ada hint)
 
@@ -274,7 +272,7 @@ export abstract class AnagramService {
         if (hintCount > 0) {
           //kasus 1 : ada hint yang dipakai
           const scoredLetters = letterCount - hintCount;
-          questionScore = scoredLetters * anagramJson.score_per_question * 1;
+          questionScore = scoredLetters * 1;
         } else {
           //kasus 2 : tidak ada hint, tapi salah (partial scoring x1)
           let correctMatch = 0;
@@ -284,7 +282,7 @@ export abstract class AnagramService {
             if (guessedWord[index] === correctWord[index]) correctMatch++;
           }
 
-          questionScore = correctMatch * anagramJson.score_per_question * 1;
+          questionScore = correctMatch * 1;
         }
       }
 
@@ -349,7 +347,6 @@ export abstract class AnagramService {
       //mengembalikan semua field dari prisma.games
       ...game,
       //menambahkan detail yang diekstrak dari game_json
-      score_per_question: anagramJson.score_per_question,
       is_question_randomized: anagramJson.is_question_randomized,
       questions: anagramJson.questions,
 
@@ -454,8 +451,6 @@ export abstract class AnagramService {
 
     //5. CREATE OBJECT IANAGRAM JSON BAru
     const anagramJson: IAnagramJson = {
-      score_per_question:
-        data.score_per_question ?? oldAnagramJson?.score_per_question ?? 0,
       is_question_randomized:
         data.is_question_randomized ??
         oldAnagramJson?.is_question_randomized ??

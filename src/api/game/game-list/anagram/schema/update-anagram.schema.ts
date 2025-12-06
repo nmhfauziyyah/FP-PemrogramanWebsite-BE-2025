@@ -29,7 +29,6 @@ export const UpdateAnagramSchema = z.object({
   thumbnail_image: fileSchema({}).optional(),
   is_publish: StringToBooleanSchema.optional(), // Untuk update status publish
   is_question_randomized: StringToBooleanSchema.optional(),
-  score_per_question: z.coerce.number().min(1).max(1000).optional(),
 
   // files_to_upload opsional, hanya dikirim jika ada gambar baru/diubah
   files_to_upload: fileArraySchema({

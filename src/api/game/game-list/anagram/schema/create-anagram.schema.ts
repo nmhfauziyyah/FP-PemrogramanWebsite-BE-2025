@@ -22,7 +22,6 @@ export const CreateAnagramSchema = z.object({
   thumbnail_image: fileSchema({}).optional(),
   is_publish_immediately: StringToBooleanSchema.default(false),
   is_question_randomized: StringToObjectSchema(z.boolean()).default(false),
-  score_per_question: z.coerce.number().min(1).max(1000), //score per huruf
 
   files_to_upload: fileArraySchema({
     max_size: 10 * 1024 * 1024,
