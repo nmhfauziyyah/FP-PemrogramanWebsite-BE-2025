@@ -95,6 +95,7 @@ export abstract class AnagramService {
 
     //4. membuat objek IAnagramJson
     const anagramJson: IAnagramJson = {
+      score_per_question: 1,
       is_question_randomized: data.is_question_randomized,
       questions: data.questions.map(
         (question: ICreateAnagram['questions'][number]) => ({
@@ -113,7 +114,7 @@ export abstract class AnagramService {
         creator_id: user_id,
         name: data.name,
         description: data.description,
-        thumbnail_image: thumbnailImagePath ?? '', // provide empty string fallback to satisfy Prisma's non-nullable string type
+        thumbnail_image: thumbnailImagePath ?? '', // empty string fallback for non-nullable Prisma field
         is_published: data.is_publish_immediately,
         game_json: anagramJson as unknown as Prisma.InputJsonValue, //pastikan di cast ke JsonObject
       },
@@ -261,29 +262,32 @@ export abstract class AnagramService {
         );
       }
 
-      //logic scoring anagram
+      // ========== REVISED SCORING LOGIC (3 MUTUALLY EXCLUSIVE CONDITIONS) ==========
+      // Condition 1: PERFECT (x2) - Correct answer WITHOUT any hints
       if (isPerfect) {
         //point x2/huruf
         questionScore = letterCount * 2;
-      } else if (guessedWord.length > 0) {
-        //jawaban dikirim, tapi tidak sempurna (salah atau ada hint)
+      }
+      // Condition 2: INCORRECT/PARTIAL (x1) - Wrong answer WITHOUT hints
+      else if (hintCount === 0 && guessedWord !== correctWord) {
+        // Count correct letters in correct positions
+        let correctMatch = 0;
 
-        //requirement 3 : kalo ada yang salah = x1/huruf
-        if (hintCount > 0) {
-          //kasus 1 : ada hint yang dipakai
-          const scoredLetters = letterCount - hintCount;
-          questionScore = scoredLetters * 1;
-        } else {
-          //kasus 2 : tidak ada hint, tapi salah (partial scoring x1)
-          let correctMatch = 0;
-
-          for (let index = 0; index < letterCount; index++) {
-            //cek kecocokan posisi
-            if (guessedWord[index] === correctWord[index]) correctMatch++;
-          }
-
-          questionScore = correctMatch * 1;
+        for (let index = 0; index < letterCount; index++) {
+          if (guessedWord[index] === correctWord[index]) correctMatch++;
         }
+
+        questionScore = correctMatch * 1;
+      }
+      // Condition 3: HINT USED (Penalty) - Only score non-hinted letters
+      else if (hintCount > 0) {
+        // Score only the letters that were NOT revealed by hints
+        const scoredLetters = letterCount - hintCount;
+        questionScore = scoredLetters * 1;
+      }
+      // Condition 4: Answer submitted but empty
+      else {
+        questionScore = 0;
       }
 
       totalScore += questionScore;
@@ -451,6 +455,7 @@ export abstract class AnagramService {
 
     //5. CREATE OBJECT IANAGRAM JSON BAru
     const anagramJson: IAnagramJson = {
+      score_per_question: oldAnagramJson?.score_per_question ?? 1,
       is_question_randomized:
         data.is_question_randomized ??
         oldAnagramJson?.is_question_randomized ??
@@ -488,6 +493,7 @@ export abstract class AnagramService {
         name: data.name,
         description: data.description,
         thumbnail_image: thumbnailImagePath ?? '',
+        is_published: data.is_publish, // update publish status from data.is_publish
         game_json: anagramJson as unknown as Prisma.InputJsonValue,
       },
 
