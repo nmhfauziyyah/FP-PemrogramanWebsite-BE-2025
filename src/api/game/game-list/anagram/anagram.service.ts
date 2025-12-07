@@ -195,8 +195,8 @@ export abstract class AnagramService {
         question_id: q.question_id,
         image_url: q.image_url,
         shuffled_letters: shuffledLetters, //array huruf acak
-        //menambahkan informasi batas hint (panjang kata)
-        hint_limit: q.correct_word.length < 5 ? 1 : 2,
+        //menambahkan informasi batas hint (setiap 5 huruf = 1 hint, dibulatkan ke atas)
+        hint_limit: Math.ceil(q.correct_word.replaceAll(/\s/g, '').length / 5),
         correct_word: q.correct_word,
       };
     });
@@ -247,15 +247,19 @@ export abstract class AnagramService {
 
       if (!correctWord) continue;
 
-      const letterCount = correctWord.length;
+      // Remove spaces for letter counting (is_hinted doesn't include spaces)
+      const correctWordNoSpaces = correctWord.replaceAll(/\s/g, '');
+      const letterCount = correctWordNoSpaces.length;
       const hintCount = isHinted.filter(Boolean).length;
+
+      // Compare guessed word with correct word (both with spaces for accuracy)
       const isPerfect = guessedWord === correctWord && hintCount === 0;
 
       let questionScore = 0;
 
       //VALIDASI LANJUTAN : CEK KONSISTENSI PANJANG DATA
       if (isHinted.length > 0 && isHinted.length != letterCount) {
-        //FE mengirim data hint yang tidak sesuai panjang kata
+        //FE mengirim data hint yang tidak sesuai panjang kata (tanpa spasi)
         throw new ErrorResponse(
           StatusCodes.BAD_REQUEST,
           `Hint array length mismatch for question ${answer.question_id}`,
@@ -295,7 +299,7 @@ export abstract class AnagramService {
       result.push({
         question_id: answer.question_id,
         guessed_word: answer.guessed_word,
-        is_correct: isPerfect,
+        is_correct: guessedWord === correctWord, // Correct if answer matches, regardless of hints
         score: questionScore,
         correct_word: correctWord,
       });
@@ -421,15 +425,20 @@ export abstract class AnagramService {
     }
 
     //3. VALIDASI FILE BARU YANG DIUPLOAD
-    const questionWithImageAmount = data.questions?.length ?? 0;
-    if (
-      data.files_to_upload &&
-      questionWithImageAmount !== data.files_to_upload.length
-    )
-      throw new ErrorResponse(
-        StatusCodes.BAD_REQUEST,
-        'All uploaded files must be used by questions.',
-      );
+    // Only validate if files_to_upload exists
+    if (data.files_to_upload && data.questions) {
+      // Count how many questions have new images (numeric index)
+      const questionsWithNewImages = data.questions.filter(
+        q => typeof q.question_image_array_index === 'number',
+      ).length;
+
+      if (questionsWithNewImages !== data.files_to_upload.length) {
+        throw new ErrorResponse(
+          StatusCodes.BAD_REQUEST,
+          `Number of uploaded files (${data.files_to_upload.length}) must match number of questions with new images (${questionsWithNewImages}).`,
+        );
+      }
+    }
 
     //4. PROSES UPLOAD GAMBAR BARU
     let thumbnailImagePath = game.thumbnail_image;
@@ -471,11 +480,20 @@ export abstract class AnagramService {
               typeof question.question_image_array_index === 'string'
             ) {
               imageUrl = question.question_image_array_index;
+            } else {
+              // If no question_image_array_index provided, preserve old image
+              const oldQuestion = oldAnagramJson?.questions.find(
+                q => q.question_id === question.question_id,
+              );
+              imageUrl = oldQuestion?.image_url ?? '';
             }
 
             //menentukan id soal:
-            const oldQuestion = oldAnagramJson?.questions[index];
-            const qId = oldQuestion?.question_id ?? v4(); //mempertahankan ID lama jika ada, buat baru jika ini soal baru
+            // Use question_id from the request if provided, otherwise try to find from old data
+            const qId =
+              question.question_id ??
+              oldAnagramJson?.questions[index]?.question_id ??
+              v4();
 
             return {
               question_id: qId, // menggunakan ID lama atau ID baru

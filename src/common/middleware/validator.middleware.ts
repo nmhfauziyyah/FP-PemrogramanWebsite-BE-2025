@@ -45,12 +45,23 @@ export const validateBody = <T>({
       const filesData =
         file_fields.length > 0
           ? Object.fromEntries(
-              Object.entries(request.files || {}).map(([key, value]) => [
-                key,
-                Array.isArray(value) && value.length > 1
-                  ? value.map(item => multerToFile(item))
-                  : multerToFile(value[0]),
-              ]),
+              Object.entries(request.files || {}).map(([key, value]) => {
+                // Find the field config to check maxCount
+                const fieldConfig = file_fields.find(f => f.name === key);
+                const isMultiFile =
+                  fieldConfig &&
+                  fieldConfig.maxCount &&
+                  fieldConfig.maxCount > 1;
+
+                return [
+                  key,
+                  // If field accepts multiple files, always return array (even for single file)
+                  // Otherwise return single file
+                  isMultiFile && Array.isArray(value)
+                    ? value.map(item => multerToFile(item))
+                    : multerToFile(Array.isArray(value) ? value[0] : value),
+                ];
+              }),
             )
           : {};
 

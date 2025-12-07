@@ -1,9 +1,4 @@
-import {
-  type NextFunction,
-  type Request,
-  type Response,
-  Router,
-} from 'express';
+import { type NextFunction, type Response, Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
 import {
@@ -106,11 +101,12 @@ export const AnagramController = Router()
     },
   )
 
-  // GET : PLAY PUBLIC GAME (SHUFFLED)
+  // GET : PLAY PUBLIC GAME (SHUFFLED) - Requires Login
   .get(
     '/:game_id/play/public',
+    validateAuth({}),
     async (
-      request: Request<{ game_id: string }>,
+      request: AuthedRequest<{ game_id: string }>,
       response: Response,
       next: NextFunction,
     ) => {
@@ -171,12 +167,13 @@ export const AnagramController = Router()
     },
   )
 
-  //POST : CHECK ANSWER
+  //POST : CHECK ANSWER - Requires Login
   .post(
     '/:game_id/check',
+    validateAuth({}),
     validateBody({ schema: CheckAnagramAnswerSchema }),
     async (
-      request: Request<{ game_id: string }, {}, ICheckAnagramAnswer>,
+      request: AuthedRequest<{ game_id: string }, {}, ICheckAnagramAnswer>,
       response: Response,
       next: NextFunction,
     ) => {

@@ -10,6 +10,7 @@ import {
 } from '@/common';
 
 export const UpdateAnagramQuestionSchema = z.object({
+  question_id: z.string().uuid().optional(), // Allow frontend to send existing question ID
   correct_word: z.string().min(2).max(50).trim(),
 
   // question_image_array_index bisa berupa:
